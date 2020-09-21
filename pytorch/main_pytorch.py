@@ -1,4 +1,3 @@
-
 import os, sys
 import argparse
 import time
@@ -11,12 +10,14 @@ import torch.nn as nn
 #import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
 
+from model import UNet
+
 import nsml
 from nsml.constants import DATASET_PATH, GPU_NUM
 
 
 
-IMSIZE = 120, 60
+IMSIZE = 256, 128
 VAL_RATIO = 0.2
 RANDOM_SEED = 1234
 
@@ -57,8 +58,8 @@ def DataLoad(imdir):
         img_whole = cv2.imread(p, 0)
         h, w = img_whole.shape
         h_, w_ = h, w//2
-        l_img = img_whole[:, :w_]
-        r_img = img_whole[:, w_:2*w_]
+        l_img = img_whole[100:500, 100:300]
+        r_img = img_whole[100:500, 300:500]
         _, l_cls, r_cls = os.path.basename(p).split('.')[0].split('_')
         if l_cls=='0' or l_cls=='1' or l_cls=='2' or l_cls=='3':
             img.append(l_img);      lb.append(int(l_cls))
@@ -82,11 +83,11 @@ def ImagePreprocessing(img):
 
 def ParserArguments(args):
     # Setting Hyperparameters
-    args.add_argument('--epoch', type=int, default=10)          # epoch 수 설정
-    args.add_argument('--batch_size', type=int, default=8)      # batch size 설정
+    args.add_argument('--epoch', type=int, default=1000)          # epoch 수 설정
+    args.add_argument('--batch_size', type=int, default=32)      # batch size 설정
     args.add_argument('--learning_rate', type=float, default=1e-5)  # learning rate 설정
     args.add_argument('--num_classes', type=int, default=4)     # 분류될 클래스 수는 4개
-
+    args.add_argument('--model_name',type=str,default='baseline')
     # DO NOT CHANGE (for nsml)
     args.add_argument('--mode', type=str, default='train', help='submit일 때 test로 설정됩니다.')
     args.add_argument('--iteration', type=str, default='0',
@@ -94,7 +95,8 @@ def ParserArguments(args):
     args.add_argument('--pause', type=int, default=0, help='model 을 load 할때 1로 설정됩니다.')
 
     config = args.parse_args()
-    return config.epoch, config.batch_size, config.num_classes, config.learning_rate, config.pause, config.mode
+    return config.epoch, config.batch_size, config.num_classes, config.learning_rate,config.model_name, config.pause, config.mode
+
 
 
 class SampleModelTorch(nn.Module):
@@ -134,17 +136,21 @@ class PNSDataset(Dataset):
 if __name__ == '__main__':
     args = argparse.ArgumentParser()
     print(GPU_NUM)
-    nb_epoch, batch_size, num_classes, learning_rate, ifpause, ifmode = ParserArguments(args)
+    nb_epoch, batch_size, num_classes, learning_rate,model_name, ifpause, ifmode = ParserArguments(args)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     #####   Model   #####
-    model = SampleModelTorch(num_classes)
+    if model_name == 'baseline':
+        model = SampleModelTorch(num_classes)
+    elif model_name == 'UNet':
+        model = UNet(1,64,4)
+
     #model.double()
     model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     bind_model(model)
 
