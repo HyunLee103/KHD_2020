@@ -58,8 +58,8 @@ def DataLoad(imdir):
         img_whole = cv2.imread(p, 0)
         h, w = img_whole.shape
         h_, w_ = h, w//2
-        l_img = img_whole[100:500, 100:300]
-        r_img = img_whole[100:500, 300:500]
+        l_img = img_whole[100:500, 300:500]
+        r_img = img_whole[100:500, 100:300]
         _, l_cls, r_cls = os.path.basename(p).split('.')[0].split('_')
         if l_cls=='0' or l_cls=='1' or l_cls=='2' or l_cls=='3':
             img.append(l_img);      lb.append(int(l_cls))
